@@ -287,6 +287,18 @@
     }
     .answer-area:focus { border-color: var(--mint); box-shadow: 0 0 0 3px rgba(31,165,138,.12); }
     .q-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    .hint-box {
+      display: none;
+      margin-top: 10px;
+      border-left: 4px solid #c29a37;
+      border-radius: 0 13px 13px 0;
+      padding: 11px 13px;
+      color: #594b24;
+      background: #fff9e8;
+      font-size: .9rem;
+      line-height: 1.6;
+    }
+    .hint-box.show { display: block; }
     .explanation {
       display: none;
       margin-top: 16px;
@@ -428,9 +440,11 @@
     .simple-guide h2 { margin: 0; font-size: 1rem; }
     .simple-guide p { margin: 3px 0 0; color: #666; font-size: .84rem; }
     .simple-status { display: flex; gap: 12px; margin-top: 11px; font-size: .84rem; color: #555; }
+    .keyboard-help { margin-top: 8px; color: #747474; font-size: .76rem; }
+    .keyboard-help kbd { display: inline-block; min-width: 25px; margin: 0 2px; padding: 2px 6px; border: 1px solid #cfd3ce; background: #f7f8f6; color: #333; font: inherit; font-weight: 800; text-align: center; }
     .simple-track { height: 5px; background: #e4e7e3; margin-top: 8px; overflow: hidden; }
     .simple-fill { height: 100%; width: 0; background: #2f775c; transition: width .2s ease; }
-    .text-button { border: 0; background: transparent; color: #555; padding: 4px; font-size: .8rem; text-decoration: underline; }
+    .text-button { flex-shrink: 0; white-space: nowrap; border: 0; background: transparent; color: #555; padding: 4px; font-size: .8rem; text-decoration: underline; }
     .question { display: none; border: 1px solid #d6d9d5; border-radius: 2px; background: white; padding: 25px; }
     .question.active { display: block; }
     .question.is-correct, .question.is-wrong { box-shadow: none; }
@@ -442,6 +456,8 @@
     .badge.warm, .badge.source { background: transparent; color: #666; }
     .q-meta .badge:last-child { display: none; }
     .question h3 { font-size: 1.12rem; line-height: 1.7; margin-bottom: 20px; }
+    .pdf-source { margin: -10px 0 18px; color: #6a6f6b; font-size: .78rem; line-height: 1.5; }
+    .pdf-source strong { color: #3f5f52; }
     .options { gap: 8px; }
     .option { border-radius: 2px; padding: 13px 14px; }
     .option:hover { border-color: #7f9e91; background: #fafcfb; }
@@ -466,6 +482,7 @@
     .instant-feedback.show { display: block; }
     .instant-feedback.correct { color: #1f684d; border-color: #2f775c; background: #edf7f1; }
     .instant-feedback.wrong { color: #9c3f3a; border-color: #bd625d; background: #fbefee; }
+    .instant-feedback p { margin: 6px 0 0; font-weight: 500; line-height: 1.65; }
     .explanation {
       margin-top: 0;
       border-left: 4px solid #bbb;
@@ -528,13 +545,19 @@
 
     @media (max-width: 560px) {
       .hero { padding: 18px 15px 14px; }
-      .shell { padding: 12px 10px 82px; }
+      .shell { padding: 12px 10px calc(92px + env(safe-area-inset-bottom)); }
       .simple-guide-top { align-items: flex-start; }
-      .question { padding: 19px 16px; }
+      .simple-status { flex-wrap: wrap; gap: 5px 12px; }
+      .keyboard-help { display: none; }
+      .question { padding: 20px 16px; }
       .question h3 { font-size: 1rem; }
-      .option { padding: 11px; }
-      .question-nav { grid-template-columns: 1fr 86px 1fr; bottom: 6px; }
-      .question-nav button, .question-nav select { padding: 7px 8px; font-size: .84rem; }
+      .pdf-source { margin-top: -8px; word-break: keep-all; }
+      .option { min-height: 48px; padding: 12px; touch-action: manipulation; }
+      .answer-area { min-height: 170px; font-size: 16px; }
+      .explanation, .instant-feedback { font-size: .92rem; }
+      .question-nav { grid-template-columns: minmax(0,1fr) 86px minmax(0,1fr); bottom: max(6px, env(safe-area-inset-bottom)); padding: 8px; }
+      .question-nav button, .question-nav select { min-height: 48px; padding: 8px; font-size: 16px; touch-action: manipulation; }
+      .final-result-card { padding: 24px 16px; }
     }
 
     @media (max-width: 860px) {
@@ -623,6 +646,7 @@
           <span id="simpleAnswered">응답 0</span>
           <span id="liveScore">객관식 정답 0</span>
         </div>
+        <div class="keyboard-help"><kbd>1~4</kbd> 답안 선택 · <kbd>←</kbd> 이전 · <kbd>→</kbd> 다음 · 문항 순서 랜덤</div>
         <div class="simple-track" aria-hidden="true"><div class="simple-fill" id="simpleFill"></div></div>
       </section>
       <section class="intro-card">
@@ -938,11 +962,68 @@
       24: '시작 init, 처리 doFilter, 종료 destroy',
       25: '속성 하나 removeAttribute, 세션 전체 invalidate'
     };
-    const stateKey = 'server-programming-midterm-v6';
+    const shortHints = {
+      17: '선언문에는 !, 표현문에는 =가 붙습니다. 아무 기호가 붙지 않은 것이 스크립틀릿입니다.',
+      18: '인코딩 속성에는 Encoding, 오류 이동 속성에는 Page라는 단어가 들어갑니다.',
+      19: '번역할 때 소스를 합치는 쪽과 요청할 때 실행 결과를 가져오는 쪽을 구분해 보세요.',
+      20: '기본 생성자, private 프로퍼티, getter/setter 중 두 가지를 떠올려 보세요.',
+      21: '값이 여러 개이므로 단일 값 메서드 이름 끝에 Values가 붙습니다.',
+      22: '전송 방식, 폼 인코딩 방식, 파일 입력 타입의 세 부분을 쓰면 됩니다.',
+      23: 'Not a Number의 약자를 떠올려 보세요.',
+      24: '초기화 → 요청 처리 → 소멸의 순서입니다.',
+      25: '속성 하나는 remove, 세션 전체는 무효화한다는 뜻의 단어를 사용합니다.'
+    };
+    const sourcePdfs = {
+      1: 'Ch01_JSP의 개요.pdf',
+      2: 'Ch02_스크립트 태그.pdf',
+      3: 'Ch03_디렉티브 태그.pdf',
+      4: 'Ch03_디렉티브 태그.pdf · Ch04_액션 태그.pdf',
+      5: 'Ch04_액션 태그.pdf',
+      6: 'Ch04_액션 태그.pdf',
+      7: 'Ch05_내장 객체_수정20240417.pdf',
+      8: 'Ch05_내장 객체_수정20240417.pdf',
+      9: 'Ch06_폼 태그.pdf',
+      10: 'Ch07_파일 업로드.pdf',
+      11: 'Ch07_파일 업로드.pdf',
+      12: 'Ch08_유효성 검사.pdf',
+      13: 'Ch09_다국어 처리.pdf',
+      14: 'Ch10_시큐리티.pdf',
+      15: 'Ch11_예외 처리.pdf',
+      16: 'Ch13_세션.pdf',
+      17: 'Ch02_스크립트 태그.pdf',
+      18: 'Ch03_디렉티브 태그.pdf',
+      19: 'Ch03_디렉티브 태그.pdf · Ch04_액션 태그.pdf',
+      20: 'Ch04_액션 태그.pdf',
+      21: 'Ch05_내장 객체_수정20240417.pdf · Ch06_폼 태그.pdf',
+      22: 'Ch07_파일 업로드.pdf',
+      23: 'Ch08_유효성 검사.pdf',
+      24: 'Ch12_필터.pdf',
+      25: 'Ch13_세션.pdf'
+    };
+    const wrongReasons = {
+      1: ['JSP는 HTML만 보여주는 정적 기술이 아니라 서버에서 자바 코드를 실행해 화면을 만드는 동적 기술입니다.', '', 'JSP 코드는 브라우저가 아니라 웹 서버의 JSP 컨테이너에서 실행됩니다.', 'JSP는 웹 페이지를 만드는 기술이며 데이터베이스 설치 프로그램이 아닙니다.'],
+      2: ['<%! ... %>는 변수나 메서드를 선언하는 선언문 태그입니다.', '<% ... %>는 자바 처리 로직을 작성하는 스크립틀릿입니다.', '', '<%@ ... %>는 페이지 설정을 적는 디렉티브 태그입니다.'],
+      3: ['language는 JSP에서 사용할 스크립트 언어를 지정합니다.', 'contentType은 브라우저로 보낼 응답의 형식과 문자셋을 지정합니다.', '', 'errorPage는 오류가 발생했을 때 이동할 페이지를 지정합니다.'],
+      4: ['', '정적·동적 포함의 연결이 서로 반대로 되어 있습니다.', '액션 태그는 요청 시 실행 결과를 포함하므로 둘 다 정적 포함은 아닙니다.', '디렉티브는 번역 시 소스를 합치므로 둘 다 동적 포함은 아닙니다.'],
+      5: ['', '자바빈즈의 값 조회는 jsp:getProperty의 역할입니다.', '세션 생성은 forward의 기능이 아닙니다.', '파일 업로드는 별도의 form 설정과 업로드 처리 기능이 필요합니다.'],
+      6: ['기본 생성자를 두는 것은 올바른 자바빈즈 규칙입니다.', '프로퍼티를 private으로 선언하는 것도 올바른 규칙입니다.', 'getter와 setter를 제공하는 것도 올바른 규칙입니다.', ''],
+      7: ['getParameter()는 보통 한 개의 값만 문자열로 가져옵니다.', '', 'getAttributeNames()는 request에 저장된 속성 이름을 확인할 때 사용합니다.', 'response.getHeader()는 요청 파라미터를 읽는 메서드가 아닙니다.'],
+      8: ['', 'sendRedirect()는 화면 색만 바꾸는 기능이 아닙니다.', '페이지 이동과 세션 종료는 별개의 동작입니다.', 'sendRedirect()는 파일 업로드 기능이 아닙니다.'],
+      9: ['GET 데이터는 주로 URL의 쿼리 문자열에 표시됩니다.', 'POST 자체가 암호화를 보장하지 않으며 보안에는 HTTPS가 필요합니다.', '', 'POST와 multipart/form-data를 사용하면 파일 업로드가 가능합니다.'],
+      10: ['파일 업로드에는 GET이나 text/plain을 사용하지 않습니다.', '', '일반적인 HTML 파일 업로드 폼의 필수 조합이 아닙니다.', 'multipart/form-data와 file 입력이 빠져 있어 파일을 전송할 수 없습니다.'],
+      11: ['', 'getFileNames()는 파일 항목의 이름을 확인하는 용도입니다.', 'invalidate()는 세션 전체를 종료하는 메서드입니다.', 'sendRedirect()는 브라우저를 다른 주소로 이동시키는 메서드입니다.'],
+      12: ['', '12A는 숫자로 바꿀 수 없으므로 isNaN()은 false가 아니라 true를 반환합니다.', 'isNaN()의 결과는 숫자 0이 아니라 논리값 true 또는 false입니다.', 'isNaN()의 결과는 null이 아니라 논리값입니다.'],
+      13: ['', 'fmt:formatNumber는 숫자의 표시 형식을 바꿀 때 사용합니다.', 'jsp:forward는 다른 페이지로 제어를 이동합니다.', 'c:forEach는 반복 처리에 사용합니다.'],
+      14: ['', '파일 업로드와 다운로드는 인증·권한 부여의 정의가 아닙니다.', '인증은 신원 확인, 권한 부여는 접근 가능 여부 확인으로 서로 다릅니다.', '인증과 권한 부여는 특정 한 장소에서만 처리되는 개념이 아닙니다.'],
+      15: ['', 'session 속성은 세션 사용 여부를 정합니다.', 'isELIgnored는 EL 표현식을 무시할지 정하는 속성입니다.', 'autoFlush는 출력 버퍼가 찼을 때 자동으로 비울지 정합니다.'],
+      16: ['removeAttribute(name)는 세션 전체가 아니라 지정한 속성 하나만 지웁니다.', '', 'getAttribute(name)는 세션 값을 읽는 메서드입니다.', 'setAttribute(name, value)는 세션에 값을 저장하는 메서드입니다.']
+    };
+    const stateKey = 'server-programming-midterm-v9';
     let graded = false;
     let wrongFilter = false;
     let currentQuestionIndex = 0;
     let finalized = false;
+    let quizOrder = [];
 
     function escapeAttr(text) {
       return String(text).replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
@@ -966,10 +1047,13 @@
             <span class="badge source">${q.tag}</span>
           </div>
           <h3>${q.stem}</h3>
+          <p class="pdf-source"><strong>출처 PDF</strong> · ${sourcePdfs[q.id]}</p>
           ${input}
           <div class="q-actions">
             <button class="btn ghost small reveal" type="button" data-target="explain-${q.id}">${isShort ? '모범답안 확인' : '정답·해설 보기'}</button>
+            ${isShort ? `<button class="btn ghost small hint-toggle" type="button" data-hint="hint-${q.id}">힌트 보기</button>` : ''}
           </div>
+          ${isShort ? `<div class="hint-box" id="hint-${q.id}"><strong>힌트</strong> · ${shortHints[q.id]}</div>` : ''}
           <div class="instant-feedback" id="feedback-${q.id}" aria-live="polite"></div>
           <div class="explanation" id="explain-${q.id}">${explanation}</div>
           ${isShort ? `<div class="self-check" id="self-${q.id}"><label><input type="checkbox" data-self="${q.id}"> 핵심 내용을 맞게 썼음 (4점 인정)</label></div>` : ''}
@@ -979,7 +1063,19 @@
     mcqSection.innerHTML = questions.filter(q => q.type === 'mcq').map(renderQuestion).join('');
     shortSection.innerHTML = questions.filter(q => q.type === 'short').map(renderQuestion).join('');
     document.getElementById('jumpGrid').innerHTML = questions.map(q => `<a class="jump" href="#q${q.id}" data-jump="${q.id}">${q.id}</a>`).join('');
-    document.getElementById('questionPicker').innerHTML = questions.map(q => `<option value="${q.id - 1}">${q.id}번</option>`).join('');
+
+    function shuffledQuestionIds() {
+      const ids = questions.map(q => q.id);
+      for (let i = ids.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [ids[i], ids[j]] = [ids[j], ids[i]];
+      }
+      return ids;
+    }
+
+    function rebuildQuestionPicker() {
+      document.getElementById('questionPicker').innerHTML = quizOrder.map((id, index) => `<option value="${index}">${index + 1}번</option>`).join('');
+    }
 
     function getState() {
       const choices = {};
@@ -994,7 +1090,7 @@
           self[q.id] = document.querySelector(`[data-self="${q.id}"]`).checked;
         }
       });
-      return { choices, texts, self, finalized };
+      return { choices, texts, self, finalized, order: quizOrder };
     }
 
     function saveState() {
@@ -1004,6 +1100,9 @@
     function loadState() {
       try {
         const saved = JSON.parse(localStorage.getItem(stateKey) || '{}');
+        const savedOrder = Array.isArray(saved.order) ? saved.order.map(Number) : [];
+        const validOrder = savedOrder.length === questions.length && new Set(savedOrder).size === questions.length && savedOrder.every(id => questions.some(q => q.id === id));
+        quizOrder = validOrder ? savedOrder : shuffledQuestionIds();
         Object.entries(saved.choices || {}).forEach(([id, value]) => {
           const input = document.querySelector(`input[name="q${id}"][value="${value}"]`);
           if (input) input.checked = true;
@@ -1017,7 +1116,9 @@
           if (box) box.checked = Boolean(value);
         });
         finalized = Boolean(saved.finalized);
-      } catch (_) {}
+      } catch (_) {
+        quizOrder = shuffledQuestionIds();
+      }
     }
 
     function updateProgress() {
@@ -1067,7 +1168,7 @@
         card.classList.add('is-wrong');
         card.querySelector(`[data-option="${selected}"]`).classList.add('wrong-choice');
         feedback.classList.add('wrong');
-        feedback.textContent = `오답입니다. 정답은 ${q.answer + 1}번입니다. 아래의 쉬운 설명을 읽어보세요.`;
+        feedback.innerHTML = `<strong>오답입니다. 정답은 ${q.answer + 1}번입니다.</strong><p>${wrongReasons[q.id][selected]}</p>`;
       }
       document.getElementById(`explain-${q.id}`).classList.add('show');
       if (scrollFeedback) feedback.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1076,10 +1177,11 @@
     function showQuestion(index, scroll = true) {
       currentQuestionIndex = Math.max(0, Math.min(questions.length - 1, index));
       document.querySelectorAll('.question').forEach(card => card.classList.remove('active'));
-      const q = questions[currentQuestionIndex];
+      const q = questions.find(item => item.id === quizOrder[currentQuestionIndex]);
       const card = document.getElementById(`q${q.id}`);
       card.classList.add('active');
-      document.getElementById('questionCounter').textContent = `${q.id} / 25 · ${q.type === 'mcq' ? '객관식' : '주관식'}`;
+      card.querySelector('.q-no').textContent = currentQuestionIndex + 1;
+      document.getElementById('questionCounter').textContent = `${currentQuestionIndex + 1} / 25 · ${q.type === 'mcq' ? '객관식' : '주관식'}`;
       document.getElementById('questionPicker').value = String(currentQuestionIndex);
       document.getElementById('prevQuestion').disabled = currentQuestionIndex === 0;
       document.getElementById('nextQuestion').disabled = false;
@@ -1241,12 +1343,39 @@
     document.querySelectorAll('.reveal').forEach(button => {
       button.addEventListener('click', () => reveal(button.dataset.target, button));
     });
+    document.querySelectorAll('.hint-toggle').forEach(button => {
+      button.addEventListener('click', () => {
+        const box = document.getElementById(button.dataset.hint);
+        const showing = box.classList.toggle('show');
+        button.textContent = showing ? '힌트 닫기' : '힌트 보기';
+      });
+    });
     document.getElementById('prevQuestion').addEventListener('click', () => showQuestion(currentQuestionIndex - 1));
-    document.getElementById('nextQuestion').addEventListener('click', () => {
+    function goNext() {
       if (currentQuestionIndex === questions.length - 1) showFinalResult();
       else showQuestion(currentQuestionIndex + 1);
-    });
+    }
+    document.getElementById('nextQuestion').addEventListener('click', goNext);
     document.getElementById('questionPicker').addEventListener('change', event => showQuestion(Number(event.target.value)));
+    document.addEventListener('keydown', event => {
+      const editing = event.target.matches('textarea, input:not([type="radio"]), select, [contenteditable="true"]');
+      if (editing) return;
+      const q = questions.find(item => item.id === quizOrder[currentQuestionIndex]);
+      if (/^[1-4]$/.test(event.key) && q.type === 'mcq' && !finalized) {
+        const input = document.querySelector(`input[name="q${q.id}"][value="${Number(event.key) - 1}"]`);
+        if (input && !input.disabled) {
+          event.preventDefault();
+          input.checked = true;
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      } else if (event.key === 'ArrowLeft' && currentQuestionIndex > 0) {
+        event.preventDefault();
+        showQuestion(currentQuestionIndex - 1);
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        goNext();
+      }
+    });
     document.getElementById('gradeSide').addEventListener('click', grade);
     document.getElementById('gradeMain').addEventListener('click', grade);
     document.getElementById('wrongOnly').addEventListener('click', toggleWrongOnly);
@@ -1276,7 +1405,11 @@
       document.getElementById('wrongOnly').disabled = true;
       document.getElementById('wrongOnly').textContent = '오답만';
       graded = false; wrongFilter = false; finalized = false;
+      quizOrder = shuffledQuestionIds();
+      rebuildQuestionPicker();
       revealAll(false); updateProgress(); resetTimer();
+      document.querySelectorAll('.hint-box').forEach(el => el.classList.remove('show'));
+      document.querySelectorAll('.hint-toggle').forEach(el => { el.textContent = '힌트 보기'; });
       document.querySelectorAll('.instant-feedback').forEach(el => { el.className = 'instant-feedback'; el.textContent = ''; });
       showQuestion(0);
       toast('초기화했습니다.');
@@ -1310,14 +1443,18 @@
     document.getElementById('timerReset').addEventListener('click', resetTimer);
 
     loadState();
+    rebuildQuestionPicker();
     questions.filter(q => q.type === 'mcq').forEach(q => {
       if (document.querySelector(`input[name="q${q.id}"]:checked`)) gradeSingle(q.id, false);
     });
     updateProgress();
     drawTimer();
-    const firstUnanswered = questions.findIndex(q => q.type === 'mcq'
-      ? !document.querySelector(`input[name="q${q.id}"]:checked`)
-      : document.getElementById(`answer-${q.id}`).value.trim() === '');
+    const firstUnanswered = quizOrder.findIndex(id => {
+      const q = questions.find(item => item.id === id);
+      return q.type === 'mcq'
+        ? !document.querySelector(`input[name="q${q.id}"]:checked`)
+        : document.getElementById(`answer-${q.id}`).value.trim() === '';
+    });
     showQuestion(firstUnanswered === -1 ? 0 : firstUnanswered, false);
     if (finalized) showFinalResult(false);
   </script>
